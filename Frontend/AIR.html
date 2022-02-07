@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>AIR</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/css/bootstrap.min.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Style the header */
+header
+{
+  background-color:#666;
+  padding: 5px;
+  text-align: center;
+  font-size: 30px;
+  color: white;
+}
+
+#map 
+{
+  height: 100%;
+}
+
+circle
+{
+  opacity: 0.7;
+}
+
+/* Optional: Makes the sample page fill the window. */
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background-color: rgb(220, 220, 226);
+}
+
+select
+{
+  width:200px;
+  height: 30px;
+  font-size: 15px;
+  margin: 0px;
+}
+
+
+/* Create two columns/boxes that floats next to each other */
+nav {
+  float: left;
+  width: 90%;
+  height: 320px;
+  font-size: 25px;
+  background: #ccc;
+  padding: 10px;
+}
+
+/* Style the list inside the menu */
+nav ul {
+  list-style-type: none;
+  padding: 0;
+}
+nav {
+    display: inline-block;
+    margin: 2.5px; /* space between buttons */
+}
+
+form
+{
+  height: 50px; 
+  width: 10%;
+}
+
+
+#col1{
+  width: 15%;
+  margin: 0px;
+  float: left;
+}
+
+#map-holder{
+  float: left;
+}
+
+article 
+{
+  float: left;
+  padding: 20px;
+  width: 70%;
+  background-color: #f1f1f1;
+  height: 300px; /* only for demonstration, should be removed */
+}
+
+/* Clear floats after the columns */
+section::after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+/* canvas for the map */
+#map-holder {
+  width: 60%;
+  height: 70%;
+  float: left;
+}
+
+#map{
+  width: 100%;
+  height: 100%;
+}
+
+/*screen region for the map key*/
+.key-holder{
+  float: right;
+  width: 10%;
+  height: 100%;
+  background-color: #ccc;
+  margin: 2.5px;
+  padding: 10px;
+}
+
+.keytext{
+  font-size: 25px;
+}
+
+.entity{
+  font-size: 15px;
+}
+
+.select{
+  width:90%;
+}
+
+.button{
+  font-size: 15px;
+}
+
+
+
+/* Responsive layout - makes the two columns/boxes stack on top of each other instead of next to each other, on small screens */
+@media (max-width: 600px) 
+{
+  nav, article {
+    width: 100%;
+
+    height: auto;
+  }
+}
+</style>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maptalks/dist/maptalks.css">
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/maptalks/dist/maptalks.min.js"></script>
+</head>
+<body>
+
+<header>
+  <h2>African Network Topology Map</h2>
+</header>
+
+<div class = "key-holder">
+  <p margin = "10px" class = "keytext"><b>Key:</b></p>
+  <p class = "entity">AS</p>
+  <svg height = "60">
+    <circle class = "p2c-key" cx = "20" cy="20" r="15" fill = "rgb(102, 255, 102)" stroke = "rgb(0, 175, 0)"></circle>
+  </svg>
+  <p class = "entity">P2C Relationship</p>
+  <svg height = "60">
+    <rect class = "p2c-key" width = "50" height="10" fill = "rgb(0, 0, 0)"></rect>
+  </svg>
+  <p class = "entity">P2P Relationship</p>
+  <svg height = "60">
+    <rect class = "p2c-key" width = "50" height="10" fill = "  #be1e1e"></rect>
+  </svg>
+  <p class = "entity">S2S Relationship</p>
+  <svg height = "60">
+    <rect class = "p2c-key" width = "50" height="10" fill = "rgb(81, 4, 117)"></rect>
+  </svg>
+  <p class = "entity">IXP</p>
+  <svg height = "60">
+    <polygon class = "ixp-key" points = "20 0, 35 30, 5 30" fill = "rgb(0, 204, 255)" stroke = "rgb(4, 20, 255)"></polygon>
+  </svg>
+  <p class = "entity">Peering Relationship</p>
+  <svg height = "60">
+    <rect class = "p2c-key" width = "50" height="10" fill = "rgb(4, 20, 255)"></rect>
+  </svg>
+</div>
+
+<div id = "col1">
+
+  <nav> 
+        <label for="filtering" id=lblFilter>Relationship Filter: </label>
+        <select class = "select" name="filter" id="slcFilter">
+            <option value="Provider-to-Customer">Provider to Customer</option>
+            <option value="Peer-to-Peer">Peer to Peer</option>
+            <option value="Sibling-to-Sibling">Sibling to Sibling</option>
+        </select>
+        <br>
+        <br>
+
+        <br>
+        <br>
+        <button class = "button" id = btnFilter onclick="setFilter()" type="Clear" style="height: 40px; width: 120px">Activate</button>
+  </nav>
+
+  <nav>
+        <label for="views">View:</label>
+        <select class="select" name="views" id="slcViews" onchange="checkNationalView()">
+            <option value="IXP View">IXP View</option>
+            <option value="National View">National View</option>
+            <option value="Continental View">Continental View</option>
+        </select>
+        <br> 
+        <br>
+        <select class = "select" name="countries" id="slcCountries" style="visibility: hidden;" onfocus='this.size=5;' onblur='this.size=1;' onchange='this.size=1; this.blur();'>
+          <option value="Algeria">Algeria</option>
+          <option value="Angola">Angola</option>
+          <option value="Benin">Benin</option>
+          <option value="Botswana">Botswana</option>
+          <option value="Burkina Faso">Burkina Faso</option>
+          <option value="Burundi">Burundi</option>
+          <option value="Cabo Verde">Cabo Verde</option>
+          <option value="Cameroon">Cameroon</option>
+          <option value="Chad">Chad</option>
+          <option value="Comoros">Comoros</option>
+          <option value="Congo, DR">Congo, DR</option>
+          <option value="Congo">Republic of the Congo</option>
+          <option value="Cote d'Ivoire">Cote d'Ivoire</option>
+          <option value="Djibouti">Djibouti</option>
+          <option value="Egypt">Egypt</option>
+          <option value="Equatorial Guinea">Equatorial Guinea</option>
+          <option value="Eritrea">Eritrea</option>
+          <option value="Eswatini">Eswatini</option>
+          <option value="Ethiopia">Ethiopia</option>
+          <option value="Gabon">Gabon</option>
+          <option value="Gambia">Gambia</option>
+          <option value="Ghana">Ghana</option>
+          <option value="Guinea">Guinea</option>
+          <option value="Guinea-Bissau">Guinea-Bissau</option>
+          <option value="Kenya">Kenya</option>
+          <option value="Lesotho">Lesotho</option>
+          <option value="Liberia">Liberia</option>
+          <option value="Libya">Libya</option>
+          <option value="Madagascar">Madagascar</option>
+          <option value="Malawi">Malawi</option>
+          <option value="Mali">Mali</option>
+          <option value="Mauritania">Mauritania</option>
+          <option value="Mauritius">Mauritius</option>
+          <option value="Morocco">Morocco</option>
+          <option value="Mozambique">Mozambique</option>
+          <option value="Namibia">Namibia</option>
+          <option value="Niger">Niger</option>
+          <option value="Nigeria">Nigeria</option>
+          <option value="Rwanda">Rwanda</option>
+          <option value="Sao Tome and Principe">Sao Tome and Principe</option>
+          <option value="Senegal">Senegal</option>
+          <option value="Seychelles">Seychelles</option>
+          <option value="Sierra Leone">Sierra Leone</option>
+          <option value="Somalia">Somalia</option>
+          <option value="South Africa">South Africa</option>
+          <option value="South Sudan">South Sudan</option>
+          <option value="Sudan">Sudan</option>
+          <option value="Tanzania">Tanzania</option>
+          <option value="Togo">Togo</option>
+          <option value="Tunisia">Tunisia</option>
+          <option value="Uganda">Uganda</option>
+          <option value="Zambia">Zambia</option>
+          <option value="Zimbabwe">Zimbabwe</option>
+          
+
+        </select>
+        <br>
+        <br>
+        <button id = "btnViewActivate" class="button" onclick="setView()" type="Clear" style="height: 40px; width: 120px">Activate/Toggle</button>
+ </nav>
+
+   
+  </div>
+  <div id = "map-holder">
+
+  <button onclick="continentalView()" type="button" class="btn btn-default btn-sm" style="margin: 5px;height: 40px; width: 45px">
+    <span class="glyphicon glyphicon-refresh"></span>
+    <a class="btn zoom-init"><i class="fas fa-recycle"></i></a>
+  </button>
+
+  <canvas width=1920 height=1080 id="map" style="border:1px solid"></canvas>
+  </div>
+
+  <script>
+  //Create the map projection using the name of the canvas and a starting position
+  var map = new maptalks.Map('map', {
+    //coordinates: Longitude\Easting , Latitude\Northing
+    center: [1.5003085282487518, 14.466794482796871],
+    zoom: 3,
+    minZoom: 2.7,
+    maxZoom: 13,
+    baseLayer: new maptalks.TileLayer('base', {
+      hitDetect: false,
+      urlTemplate: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+      subdomains: ['a','b','c','d'],
+      attribution: '&copy; <a href="http://osm.org">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/">CARTO</a>',
+      repeatWorld: false
+    })
+  });
+  //Create and set the rectangle (extent) in which the user can pan
+  var extent = map.getExtent()
+  map.setMaxExtent(extent)
+  map.setCenter([12,0])
+  map.setZoom(4.3)
+
+  //Layers to render all AS relationships to
+  tier1p2pLayer = new maptalks.VectorLayer('p2p1Layer').addTo(map)
+  tier1p2cLayer = new maptalks.VectorLayer('p2c1Layer').addTo(map)
+  tier1s2sLayer = new maptalks.VectorLayer('s2s1Layer').addTo(map)
+
+  tier2p2pLayer = new maptalks.VectorLayer('p2p2Layer').addTo(map)
+  tier2p2cLayer = new maptalks.VectorLayer('p2c2Layer').addTo(map)
+  tier2s2sLayer = new maptalks.VectorLayer('s2s2Layer').addTo(map)
+
+  tier3p2pLayer = new maptalks.VectorLayer('p2p3Layer').addTo(map)
+  tier3p2cLayer = new maptalks.VectorLayer('p2c3Layer').addTo(map)
+  tier3s2sLayer = new maptalks.VectorLayer('s2s3Layer').addTo(map)
+
+  //Layers to render all peering relationships to
+  tier1peeringLayer = new maptalks.VectorLayer('peering1Layer').addTo(map)
+  tier2peeringLayer = new maptalks.VectorLayer('peering2Layer').addTo(map)
+  tier3peeringLayer = new maptalks.VectorLayer('peering3Layer').addTo(map)
+  //Layer to render IXPs
+  ixpLayer = new maptalks.VectorLayer('ixpLayer').addTo(map)
+  //Layers to render AS
+  tier1Layer = new maptalks.VectorLayer('as1Layer').addTo(map)
+  tier2Layer = new maptalks.VectorLayer('as2Layer').addTo(map)
+  tier3Layer = new maptalks.VectorLayer('as3Layer').addTo(map)
+
+  //Boolean to keep track of whether or not the map is in ixpView
+  isIXPView = false
+  //Booleans to keep track of which relationship filter the map is in (if any)
+  isP2P = false
+  isP2C = false
+  isS2S = false
+  parseASRel()
+  parsePeeringRel()
+  parseIXP()
+  parseAS()
+
+  tier1peeringLayer.hide()
+  tier2peeringLayer.hide()
+  tier3peeringLayer.hide()
+
+  tier2Layer.hide();
+  tier2p2pLayer.hide();
+  tier2p2cLayer.hide();
+  tier2s2sLayer.hide();
+
+  tier3Layer.hide();
+  tier3p2pLayer.hide();
+  tier3p2cLayer.hide();
+  tier3s2sLayer.hide();
+
+  //Filter shown entities by zoom level
+  map.on('zoomend', function(){
+    if (map.getZoom() > 7){
+      if (isIXPView){
+        tier3peeringLayer.show()
+      }
+      else if (isP2C){
+        tier3Layer.show()
+        tier3p2cLayer.show()
+      }
+      else if (isP2P){
+        tier3Layer.show()
+        tier3p2pLayer.show()
+      }
+      else if (isS2S){
+        tier3Layer.show()
+        tier3s2sLayer.show()
+      }
+      else{
+        tier3Layer.show();
+        tier3p2pLayer.show();
+        tier3p2cLayer.show();
+        tier3s2sLayer.show();
+      }
+    }
+    else if (map.getZoom() > 6){
+
+      if (isIXPView){
+        tier2peeringLayer.show()
+        tier3peeringLayer.hide()
+      }
+      else if (isP2C){
+        tier2Layer.show()
+        tier2p2cLayer.show()
+        tier3Layer.hide()
+        tier3p2cLayer.hide()
+      }
+      else if (isP2P){
+        tier2Layer.show()
+        tier2p2pLayer.show()
+        tier3Layer.hide()
+        tier3p2pLayer.hide()
+      }
+      else if (isS2S){
+        tier2Layer.show()
+        tier2s2sLayer.show()
+        tier3Layer.hide()
+        tier3s2sLayer.hide()
+      }
+      else{
+        tier2Layer.show();
+        tier3Layer.hide();
+        tier2p2pLayer.show();
+        tier2p2cLayer.show();
+        tier2s2sLayer.show();
+        tier3p2pLayer.hide();
+        tier3p2cLayer.hide();
+        tier3s2sLayer.hide();
+      }
+    }
+    else{
+
+      if (isIXPView){
+        tier1peeringLayer.show()
+        tier2peeringLayer.hide()
+        tier3peeringLayer.hide()
+      }
+      else if (isP2C){
+        tier2Layer.hide()
+        tier2p2cLayer.hide()
+        tier3Layer.hide()
+        tier3p2cLayer.hide()
+      }
+      else if (isP2P){
+        tier2Layer.hide()
+        tier2p2pLayer.hide()
+        tier3Layer.hide()
+        tier3p2pLayer.hide()
+      }
+      else if (isS2S){
+        tier2Layer.hide()
+        tier2s2sLayer.hide()
+        tier3Layer.hide()
+        tier3s2sLayer.hide()
+      }
+      else{
+        tier2Layer.hide();
+        tier3Layer.hide();
+        tier2p2pLayer.hide();
+        tier2p2cLayer.hide();
+        tier2s2sLayer.hide();
+        tier3p2pLayer.hide();
+        tier3p2cLayer.hide();
+        tier3s2sLayer.hide();
+      }
+    }
+  })
+  //Read AS JSON file data
+  function parseAS(){
+    fetch("asdata.json")
+      .then(data => data.json())
+      .then(data => {
+      //For each json object in file:
+      for(var i = 0; i < data["AS"].length; i++){
+        //Store data from AS object
+        var obj = data["AS"][i]
+        var asn = obj["asn"]
+        var orgID = obj["orgID"]
+        var lon = obj["lon"]
+        var lat = obj["lat"]
+        var tier = obj["tier"]
+        var isPeered = obj["isPeered"]
+        var coords = [lon, lat]
+        //Create marker based on object data 
+        var marker = new maptalks.Marker(coords,
+        {
+          'symbol' : {
+            'textName' : asn,
+            'markerType' : 'ellipse',
+            'textSize' : 20,
+            'textStyle' : 'bold',
+            'markerFill' : 'rgb(102, 255, 102)',
+            'markerLineColor' : 'rgb(0, 175, 0)',
+            'markerWidth' : 20,
+            'markerHeight' : 20,
+            'org' : orgID,
+            'tier' : tier
+          }
+        })
+        var marker2 = null
+        //Since a marker cannot be added to more than 1 layer apparently
+        if (isPeered == 1){
+          marker2 = new maptalks.Marker(
+            coords,
+        {
+          'symbol' : {
+            'textName' : asn,
+            'markerType' : 'ellipse',
+            'textSize' : 20,
+            'textStyle' : 'bold',
+            'markerFill' : 'rgb(102, 255, 102)',
+            'markerLineColor' : 'rgb(0, 175, 0)',
+            'markerWidth' : 20,
+            'markerHeight' : 20,
+            'org' : orgID,
+            'tier' : tier
+          }
+        })
+        }
+        //Add marker to layer based on tier
+        if (tier == 1){
+          marker.addTo(tier1Layer)
+          if (marker2 != null){
+            marker2.addTo(tier1peeringLayer)
+          }
+        }
+        else if (tier == 2){
+          marker.addTo(tier2Layer)
+          if (marker2 != null){
+            marker2.addTo(tier2peeringLayer)
+          }
+        }
+        else if (tier == 3){
+          marker.addTo(tier3Layer)
+          if (marker2 != null){
+            marker2.addTo(tier3peeringLayer)
+          }
+        }
+      }  
+      })
+  }
+
+  //Add relationship lines to layers
+  function parseASRel(){
+    fetch("asreldata.json")
+      .then(data => data.json())
+      .then(data => {
+      //For each json object in file:
+      for(var i = 0; i < data["AS_rel"].length; i++){
+        //Store data from relationship object
+        var rel = data["AS_rel"][i]
+        var coords1 = rel["coords1"]
+        var coords2 = rel["coords2"]
+        if ((coords1[0] == null)||(coords2[0] == null)){
+          continue
+        }
+        var type = rel["type"]
+        var tier = rel["tier"]
+          //Create custom color based on type
+        var color = '#be1e1e'
+          if (type == 'p2p'){
+            color = '#be1e1e'
+          }
+          else if (type == 'p2c'){
+            color = 'rgb(0, 0, 0)'
+          }
+          else{
+            color = 'rgb(81, 4, 117)'
+          }
+          //Create LineString based on object data 
+          var line = new maptalks.LineString([coords1, coords2],
+          {
+            'symbol' : {
+              'lineColor' : color,
+              'lineWidth' : 0.5,
+            }
+          })
+          //Add marker to layer based on tier
+          if (tier == 1){
+            if (type == 'p2p'){
+              line.addTo(tier1p2pLayer)
+            }
+            else if (type == 'p2c'){
+              line.addTo(tier1p2cLayer)
+            }
+            else if (type == 's2s'){
+              line.addTo(tier1s2sLayer)
+            }
+          }
+          else if (tier == 2){
+            if (type == 'p2p'){
+              line.addTo(tier2p2pLayer)
+            }
+            else if (type == 'p2c'){
+              line.addTo(tier2p2cLayer)
+            }
+            else if (type == 's2s'){
+              line.addTo(tier2s2sLayer)
+            }
+          }
+          else if (tier == 3){
+            if (type == 'p2p'){
+              line.addTo(tier3p2pLayer)
+            }
+            else if (type == 'p2c'){
+              line.addTo(tier3p2cLayer)
+            }
+            else if (type == 's2s'){
+              line.addTo(tier3s2sLayer)
+            }
+          }
+      }  
+    })
+}
+
+function parseIXP(){
+  fetch("ixpdata.json")
+      .then(data => data.json())
+      .then(data => {
+      //For each json object in file:
+      for(var i = 0; i < data["IXPs"].length; i++){
+        //Store data from IXP object
+        var ixp = data["IXPs"][i]
+        var orgID = ixp["orgID"]
+        var lon = ixp["lon"]
+        var lat = ixp["lat"]
+        var coords = [lon, lat]
+        //Create marker based on object data 
+        var marker = new maptalks.Marker(
+        coords,{
+        'symbol' : {
+          'markerType' : 'triangle',
+          'markerFill' : 'rgb(0, 204, 255)',
+          'markerLineColor' : 'rgb(4, 20, 255)',
+          'markerWidth' : 20,
+          'markerHeight' : 20
+        }
+        }
+        )
+        //Add marker to ixp layer
+        marker.addTo(ixpLayer)
+      }  
+      })
+  }
+
+  function parsePeeringRel(){
+    fetch("peeringdata.json")
+      .then(data => data.json())
+      .then(data => {
+      //For each json object in file:
+      for(var i = 0; i < data["Peering"].length; i++){
+        //Store data from relationship object
+        var rel = data["Peering"][i]
+          var coords1 = rel["coords1"]
+          var coords2 = rel["coords2"]
+          var tier = rel["tier"]
+          if ((coords1[0] == null)||(coords2[0] == null)){
+          continue
+          }
+          //Create LineString based on object data 
+          var line = new maptalks.LineString([coords1, coords2],
+          {
+            'symbol' : {
+              'lineColor' : 'rgb(0, 13, 126)',
+              'lineWidth' : 0.5,
+            }
+          })
+          //Add marker to layer based on tier
+          if (tier == 1){
+            line.addTo(tier1peeringLayer)
+          }
+          else if (tier == 2){
+            line.addTo(tier2peeringLayer)
+          }
+          else if (tier == 3){
+            line.addTo(tier3peeringLayer)
+          }
+      }  
+    }) 
+  }
+
+  //Check if user selected National View and make country list appear or disappear
+  function checkNationalView(){
+    var selection = document.getElementById("slcViews").value;
+    var slcCountry = document.getElementById("slcCountries")
+    
+    if (selection == "National View"){
+      if (slcCountry.style.visibility == "hidden"){
+        slcCountry.style.visibility = "visible"
+      }
+    }
+    else{
+      if (slcCountry.style.visibility == "visible"){
+        slcCountry.style.visibility = "hidden"
+      }
+    }
+  }
+
+  //On click event for view activation button
+  function setView(){
+    var selection = document.getElementById("slcViews").value;
+
+    if (selection == "IXP View"){
+      ixpView()
+    }
+    else if (selection == "Continental View"){
+      continentalView()
+    }
+    else if (selection == "National View"){
+      nationalView()
+    }
+  }
+  //Zoom to selected country showing tier 3 level detail for all non filtered entities
+  function nationalView(){
+    var selection = document.getElementById("slcCountries").value
+
+    if (selection == "Algeria"){
+      map.setCenter([1.6596,28.0339])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Angola"){
+      map.setCenter([17.8739,-11.2027])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Benin"){
+      map.setCenter([2.3158,9.3077])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Botswana"){
+      map.setCenter([24.6849,-22.3285])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Burkina Faso"){
+      map.setCenter([-1.5616,12.2383])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Burundi"){
+      map.setCenter([29.9189,-3.3731])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Cabo Verde"){
+      map.setCenter([-23.0418,16.5388])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Cameroon"){
+      map.setCenter([12.3547,7.3697])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Chad"){
+      map.setCenter([18.7322,9.3077])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Comoros"){
+      map.setCenter([43.3333,-11.6455])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Congo, DR"){
+      map.setCenter([21.7587,-4.0383])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Congo"){
+      map.setCenter([15.8277,-0.2280])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Cote d'Ivoire"){
+      map.setCenter([-5.5471,7.5400])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Djibouti"){
+      map.setCenter([43.1456,11.5721])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Egypt"){
+      map.setCenter([30.8025,26.8206])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Equatorial Guinea"){
+      map.setCenter([10.2679,1.6508])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Eritrea"){
+      map.setCenter([39.7823,15.1794])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Eswatini"){
+      map.setCenter([31.4659,-26.5225])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Ethiopia"){
+      map.setCenter([40.4897,9.1450])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Gabon"){
+      map.setCenter([11.6094,-0.8037])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Gambia"){
+      map.setCenter([-15.3101,13.4432])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Ghana"){
+      map.setCenter([-1.0232,7.9465])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Guinea"){
+      map.setCenter([-9.6966,9.9456])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Guinea-Bissau"){
+      map.setCenter([-15.1804,11.8037])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Kenya"){
+      map.setCenter([37.9062,-0.0236])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Lesotho"){
+      map.setCenter([28.2336,-29.6100])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Liberia"){
+      map.setCenter([-9.4295,6.4281])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Libya"){
+      map.setCenter([17.2283,26.3351])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Madagascar"){
+      map.setCenter([46.8691,-18.7669])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Malawi"){
+      map.setCenter([34.3015,-13.2543])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Mali"){
+      map.setCenter([-3.9962,17.5707])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Mauritania"){
+      map.setCenter([-10.9408,21.0079])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Mauritius"){
+      map.setCenter([57.5522,-20.3484])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Morocco"){
+      map.setCenter([-7.0926,31.7917])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Mozambique"){
+      map.setCenter([35.5296,-18.6657])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Namibia"){
+      map.setCenter([18.4904,-22.9576])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Niger"){
+      map.setCenter([8.0817,17.6078])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Nigeria"){
+      map.setCenter([8.6753,9.0820])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Rwanda"){
+      map.setCenter([29.8739,-1.9403])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Sao Tome and Principe"){
+      map.setCenter([6.6131,0.1864])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Senegal"){
+      map.setCenter([-14.4524,14.4974])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Seychelles"){
+      map.setCenter([55.4920,-4.6796])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Sierra Leone"){
+      map.setCenter([-11.7799,8.4606])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Somalia"){
+      map.setCenter([46.1996,5.1521])
+      map.setZoom(7.1)
+    }
+    else if (selection == "South Africa"){
+      map.setCenter([22.9375,-30.5595])
+      map.setZoom(7.1)
+    }
+    else if (selection == "South Sudan"){
+      map.setCenter([31.3070,6.8770])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Sudan"){
+      map.setCenter([30.2176,12.8628])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Tanzania"){
+      map.setCenter([34.8888,-6.3690])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Togo"){
+      map.setCenter([0.8248,8.6195])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Uganda"){
+      map.setCenter([32.2903,1.3733])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Zambia"){
+      map.setCenter([27.8493,-13.1339])
+      map.setZoom(7.1)
+    }
+    else if (selection == "Zimbabwe"){
+      map.setCenter([29.1549,-19.0154])
+      map.setZoom(7.1)
+    }
+    
+  }
+
+  function setFilter(){
+    var selection = document.getElementById("slcFilter").value;
+    if (selection == "Provider-to-Customer"){
+      if ((isP2P) || (isS2S)){
+        alert("Reselect old filter and deactivate it first")
+        return
+      }
+      else p2cFilter()
+    }
+    else if (selection == "Peer-to-Peer"){
+      if ((isP2C) || (isS2S)){
+        alert("Reselect old filter and deactivate it first")
+        return
+      }
+      else p2pFilter()
+    }
+    else if (selection == "Sibling-to-Sibling"){
+      if ((isP2C) || (isP2P)){
+        alert("Reselect old filter and deactivate it first")
+        return
+      }
+      else s2sFilter()
+    }
+  }
+
+  function s2sFilter(){
+    var button = document.getElementById("btnFilter")
+    isP2C = false
+    isP2P = false
+    if (isS2S){
+      isS2S = false
+      button.innerText = "Activate"
+      if (!isIXPView){
+      zoom = map.getZoom()
+      if (zoom > 7){
+        tier3p2cLayer.show()
+        tier3p2pLayer.show()
+        tier2p2cLayer.show()
+        tier2p2pLayer.show()
+        tier1p2cLayer.show()
+        tier1p2pLayer.show()
+      }
+      else if (zoom > 6){
+        tier2p2cLayer.show()
+        tier2p2pLayer.show()
+        tier1p2cLayer.show()
+        tier1p2pLayer.show()
+      }
+      else{
+        tier1p2cLayer.show()
+        tier1p2pLayer.show()
+      }
+      }
+    }
+    else{
+      isS2S = true
+      button.innerText = "Deactivate"
+      tier1p2cLayer.hide()
+      tier1p2pLayer.hide()
+      tier2p2cLayer.hide()
+      tier2p2pLayer.hide()
+      tier3p2cLayer.hide()
+      tier3p2pLayer.hide()
+      zoom = map.getZoom()
+    }
+
+  }
+
+  function p2pFilter(){
+    var button = document.getElementById("btnFilter")
+    isP2C = false
+    isS2S = false
+    if (isP2P){
+      isP2P = false
+      button.innerText = "Activate"
+      if (!isIXPView){
+      zoom = map.getZoom()
+      if (zoom > 7){
+        tier3p2cLayer.show()
+        tier3s2sLayer.show()
+        tier2p2cLayer.show()
+        tier2s2sLayer.show()
+        tier1p2cLayer.show()
+        tier1s2sLayer.show()
+      }
+      else if (zoom > 6){
+        tier2p2cLayer.show()
+        tier2s2sLayer.show()
+        tier1p2cLayer.show()
+        tier1s2sLayer.show()
+      }
+      else{
+        tier1p2cLayer.show()
+        tier1s2sLayer.show()
+      }
+      }
+    }
+    else{
+      isP2P = true
+      button.innerText = "Deactivate"
+      tier1p2cLayer.hide()
+      tier1s2sLayer.hide()
+      tier2p2cLayer.hide()
+      tier2s2sLayer.hide()
+      tier3p2cLayer.hide()
+      tier3s2sLayer.hide()
+      zoom = map.getZoom()
+    }
+
+  }
+
+  function p2cFilter(){
+    var button = document.getElementById("btnFilter")
+    isP2P = false
+    isS2S = false
+    if (isP2C){
+      isP2C = false
+      button.innerText = "Activate"
+      if (!isIXPView){
+      zoom = map.getZoom()
+      if (zoom > 7){
+        tier3p2pLayer.show()
+        tier3s2sLayer.show()
+        tier2p2pLayer.show()
+        tier2s2sLayer.show()
+        tier1p2pLayer.show()
+        tier1s2sLayer.show()
+      }
+      else if (zoom > 6){
+        tier2p2pLayer.show()
+        tier2s2sLayer.show()
+        tier1p2pLayer.show()
+        tier1s2sLayer.show()
+      }
+      else{
+        tier1p2pLayer.show()
+        tier1s2sLayer.show()
+      }
+      }
+    }
+    else{
+      isP2C = true
+      button.innerText = "Deactivate"
+      tier1p2pLayer.hide()
+      tier1s2sLayer.hide()
+      tier2p2pLayer.hide()
+      tier2s2sLayer.hide()
+      tier3p2pLayer.hide()
+      tier3s2sLayer.hide()
+      zoom = map.getZoom()
+    }
+  }
+
+  function continentalView(){
+    var button = document.getElementById("btnFilter")
+    button.innerText = "Activate"
+    isIXPView = false
+    isP2C = false
+    isP2P = false
+    isS2S = false
+    tier1peeringLayer.hide()
+    tier2peeringLayer.hide()
+    tier3peeringLayer.hide()
+    tier1Layer.show()
+    tier1p2pLayer.show()
+    tier1p2cLayer.show()
+    tier1s2sLayer.show()
+    map.setCenter([12,0])
+    map.setZoom(4.3)
+  }
+
+  function ixpView(){
+
+    if (isIXPView){
+      isIXPView = false
+      tier1peeringLayer.hide()
+      tier2peeringLayer.hide()
+      tier3peeringLayer.hide()
+      zoom = map.getZoom()
+      if (zoom > 7){
+      tier1Layer.show();
+      tier2Layer.show();
+      tier3Layer.show();
+      if (isP2C){
+        tier1p2cLayer.show()
+        tier2p2cLayer.show()
+        tier3p2cLayer.show()
+      }
+      else if (isP2P){
+        tier1p2pLayer.show()
+        tier2p2pLayer.show()
+        tier3p2pLayer.show()
+      }
+      else if (isS2S){
+        tier1s2sLayer.show()
+        tier2s2sLayer.show()
+        tier3s2sLayer.show()
+      }
+      else{
+        tier1p2pLayer.show();
+        tier1p2cLayer.show();
+        tier1s2sLayer.show();
+        tier2p2pLayer.show();
+        tier2p2cLayer.show();
+        tier2s2sLayer.show();
+        tier3p2pLayer.show();
+        tier3p2cLayer.show();
+        tier3s2sLayer.show();
+      }
+      }
+      else if (zoom > 6){
+      tier1Layer.show();
+      tier2Layer.show();
+      if (isP2C){
+        tier1p2cLayer.show()
+        tier2p2cLayer.show()
+      }
+      else if (isP2P){
+        tier1p2pLayer.show()
+        tier2p2pLayer.show()
+      }
+      else if (isS2S){
+        tier1s2sLayer.show()
+        tier2s2sLayer.show()
+      }
+      else{
+        tier1p2pLayer.show();
+        tier1p2cLayer.show();
+        tier1s2sLayer.show();
+        tier2p2pLayer.show();
+        tier2p2cLayer.show();
+        tier2s2sLayer.show();
+      }
+      }
+      else{
+      tier1Layer.show();
+      if (isP2C){
+        tier1p2cLayer.show()
+      }
+      else if (isP2P){
+        tier1p2pLayer.show()
+      }
+      else if (isS2S){
+        tier1s2sLayer.show()
+      }
+      else{
+        tier1p2pLayer.show();
+        tier1p2cLayer.show();
+        tier1s2sLayer.show();
+      }
+      }
+    }
+    else{
+      isIXPView = true
+      tier1Layer.hide()
+      tier1p2cLayer.hide()
+      tier1p2pLayer.hide()
+      tier1s2sLayer.hide()
+      tier2Layer.hide()
+      tier2p2cLayer.hide()
+      tier2p2pLayer.hide()
+      tier2s2sLayer.hide()
+      tier3Layer.hide()
+      tier3p2cLayer.hide()
+      tier3p2pLayer.hide()
+      tier3s2sLayer.hide()
+
+      zoom = map.getZoom()
+      if (zoom > 7){
+        tier1peeringLayer.show()
+        tier2peeringLayer.show()
+        tier3peeringLayer.show()
+      }
+      else if (zoom > 6){
+        tier1peeringLayer.show()
+        tier2peeringLayer.show()
+      }
+      else{
+        tier1peeringLayer.show()
+      }
+    }
+  }
+
+  </script>
+</body>
+
+
+</html>
+
